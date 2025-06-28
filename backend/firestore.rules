@@ -1,0 +1,50 @@
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Users can only access their own data
+    match /users/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+    
+    // Devices belong to users
+    match /devices/{deviceId} {
+      allow read, write: if request.auth != null && 
+        request.auth.uid == resource.data.user_id;
+    }
+    
+    // Clipboard items belong to users
+    match /clipboard_items/{itemId} {
+      allow read, write: if request.auth != null && 
+        request.auth.uid == resource.data.user_id;
+    }
+    
+    // Security events belong to users (read-only for users)
+    match /security_events/{eventId} {
+      allow read: if request.auth != null && 
+        request.auth.uid == resource.data.user_id;
+      allow write: if request.auth != null && 
+        request.auth.token.role == 'admin';
+    }
+    
+    // Audit logs belong to users (read-only for users)
+    match /audit_logs/{logId} {
+      allow read: if request.auth != null && 
+        request.auth.uid == resource.data.user_id;
+      allow write: if request.auth != null && 
+        request.auth.token.role == 'admin';
+    }
+    
+    // Security policies belong to users
+    match /security_policies/{policyId} {
+      allow read, write: if request.auth != null && 
+        request.auth.uid == resource.data.user_id;
+    }
+    
+    // Sessions belong to users
+    match /sessions/{sessionId} {
+      allow read, write: if request.auth != null && 
+        request.auth.uid == resource.data.user_id;
+    }
+  }
+}
