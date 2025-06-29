@@ -1,6 +1,6 @@
 // API Configuration for ClipVault Backend
 export const API_CONFIG = {
-  BASE_URL: 'http://localhost:8001',
+  BASE_URL: import.meta.env.VITE_API_URL || 'http://localhost:8001',
   ENDPOINTS: {
     AUTH: '/api/auth',
     USERS: '/api/users', 
