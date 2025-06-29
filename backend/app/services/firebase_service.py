@@ -23,20 +23,31 @@ class FirebaseService:
         """Initialize Firebase connection"""
         try:
             # Get Firebase configuration from environment
+            import json
+            
+            credentials_json = os.getenv("FIREBASE_CREDENTIALS")
             credentials_path = os.getenv("GOOGLE_APPLICATION_CREDENTIALS") or os.getenv("FIREBASE_CREDENTIALS_PATH")
             project_id = os.getenv("FIREBASE_PROJECT_ID")
             
-            if not credentials_path:
-                raise Exception("GOOGLE_APPLICATION_CREDENTIALS not set in .env file")
-            
-            if not os.path.exists(credentials_path):
-                raise Exception(f"Firebase credentials file not found: {credentials_path}")
-            
             if not project_id:
-                raise Exception("FIREBASE_PROJECT_ID not set in .env file")
+                raise Exception("FIREBASE_PROJECT_ID not set in environment variables")
+            
+            # Try JSON credentials first (for Railway/cloud deployment)
+            if credentials_json:
+                try:
+                    cred_dict = json.loads(credentials_json)
+                    cred = credentials.Certificate(cred_dict)
+                    print("✅ Using Firebase credentials from FIREBASE_CREDENTIALS environment variable")
+                except json.JSONDecodeError as e:
+                    raise Exception(f"Invalid JSON in FIREBASE_CREDENTIALS: {e}")
+            # Fall back to file path (for local development)
+            elif credentials_path and os.path.exists(credentials_path):
+                cred = credentials.Certificate(credentials_path)
+                print(f"✅ Using Firebase credentials from file: {credentials_path}")
+            else:
+                raise Exception("No Firebase credentials found. Set FIREBASE_CREDENTIALS (JSON) or GOOGLE_APPLICATION_CREDENTIALS (file path)")
             
             # Initialize Firebase Admin SDK
-            cred = credentials.Certificate(credentials_path)
             firebase_admin.initialize_app(cred, {
                 'projectId': project_id
             })

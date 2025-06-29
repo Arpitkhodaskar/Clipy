@@ -75,6 +75,8 @@ def create_app() -> FastAPI:
             "http://127.0.0.1:5174",
             "http://127.0.0.1:5175",
             "http://127.0.0.1:5176",
+            "https://clipy-pi.vercel.app",  # Your Vercel frontend
+            "https://*.vercel.app",         # All Vercel apps
         ],
         allow_credentials=True,
         allow_methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
