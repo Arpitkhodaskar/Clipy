@@ -29,22 +29,43 @@ class AuditLogResponse(BaseModel):
 # Helper function to get user ID from request
 async def get_current_user_id(request: Request) -> str:
     """Extract user ID from JWT token in Authorization header"""
+    import jwt
+    import os
+    
     auth_header = request.headers.get("Authorization", "")
     
-    # Temporary: allow audit operations without auth for testing
     if not auth_header or not auth_header.startswith("Bearer "):
-        print("⚠️ No auth header provided, using test user for audit access")
-        return "test-user-audit"
+        print("⚠️ No auth header provided, cannot extract user ID")
+        raise HTTPException(status_code=401, detail="Authorization header required")
     
-    # Extract token and decode - simplified for now
-    token = auth_header.split(" ")[1]
-    # In production, properly decode and verify JWT token
-    # For now, assume token contains user ID directly
+    # Extract token and decode properly
+    token = auth_header.replace("Bearer ", "")
+    
     try:
-        # This is simplified - in production use proper JWT verification
-        return token if token else "test-user-audit"
-    except Exception:
-        return "test-user-audit"
+        # Use the same JWT settings as auth.py
+        SECRET_KEY = os.getenv("SECRET_KEY", "super-secret-key")
+        ALGORITHM = os.getenv("ALGORITHM", "HS256")
+        
+        # Decode and verify JWT token
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        user_id = payload.get("sub")
+        
+        if not user_id:
+            print("⚠️ No user ID found in JWT token")
+            raise HTTPException(status_code=401, detail="Invalid token")
+        
+        print(f"✅ Extracted user ID from JWT for audit: {user_id}")
+        return user_id
+        
+    except jwt.ExpiredSignatureError:
+        print("⚠️ JWT token has expired")
+        raise HTTPException(status_code=401, detail="Token expired")
+    except jwt.InvalidTokenError as e:
+        print(f"⚠️ Invalid JWT token: {e}")
+        raise HTTPException(status_code=401, detail="Invalid token")
+    except Exception as e:
+        print(f"⚠️ Error decoding JWT token: {e}")
+        raise HTTPException(status_code=401, detail="Token decode error")
 
 @router.get("/", response_model=List[AuditLogResponse])
 async def get_audit_logs(
@@ -126,22 +147,20 @@ async def create_audit_log(
         
         # Create new audit log
         new_log = {
-            "id": str(uuid.uuid4()),
-            "timestamp": datetime.utcnow().isoformat(),
             "action": action,
-            "user": "test@test.com",  # Get from JWT
+            "user": "test@test.com",  # TODO: Get from JWT properly
             "device": device or "API",
             "status": status,
             "ip_address": request.client.host if request.client else "127.0.0.1",
             "details": details,
-            "hash_chain": f"{uuid.uuid4().hex[:16]}...",
+            "user_id": user_id,
             "metadata": {}
         }
         
-        # In a real implementation, save to Firebase
-        # await FirebaseService.create_audit_log(new_log)
+        # Save to Firebase
+        log_id = await FirebaseService.create_audit_log(new_log)
         
-        return {"message": "Audit log created successfully", "id": new_log["id"]}
+        return {"message": "Audit log created successfully", "id": log_id}
         
     except Exception as e:
         print(f"Error creating audit log: {e}")

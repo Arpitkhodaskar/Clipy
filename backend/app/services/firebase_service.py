@@ -434,14 +434,15 @@ class FirebaseService:
                                  status_filter: Optional[str] = None, search: Optional[str] = None) -> List[Dict[str, Any]]:
         """Get audit logs for a user with filtering and pagination"""
         try:
+            # Query logs for the specific user
             query = cls._db.collection('audit_logs').where('user_id', '==', user_id)
             
             # Apply status filter if provided
             if status_filter:
                 query = query.where('status', '==', status_filter)
             
-            query = query.order_by('created_at', direction=firestore.Query.DESCENDING)
-            query = query.limit(limit).offset(offset)
+            # Get all matching documents (client-side sorting due to Firestore index limitations)
+            query = query.limit(limit * 2)  # Get more to account for filtering
             
             docs = await cls._run_in_executor(query.get)
             
@@ -449,9 +450,11 @@ class FirebaseService:
             for doc in docs:
                 log_data = doc.to_dict()
                 log_data['id'] = doc.id
+                
                 # Convert datetime objects to ISO strings for JSON serialization
-                if 'created_at' in log_data and hasattr(log_data['created_at'], 'isoformat'):
-                    log_data['created_at'] = log_data['created_at'].isoformat()
+                if 'created_at' in log_data:
+                    if hasattr(log_data['created_at'], 'isoformat'):
+                        log_data['created_at'] = log_data['created_at'].isoformat()
                     # Also set timestamp for compatibility
                     log_data['timestamp'] = log_data['created_at']
                 
@@ -463,7 +466,20 @@ class FirebaseService:
                 
                 logs.append(log_data)
             
-            return logs
+            # Sort by created_at/timestamp in descending order (newest first)
+            try:
+                logs.sort(key=lambda x: x.get('timestamp', x.get('created_at', '')), reverse=True)
+            except Exception:
+                pass  # If sorting fails, return unsorted
+            
+            # Apply offset and final limit
+            start_index = offset
+            end_index = offset + limit
+            
+            return logs[start_index:end_index]
+            
         except Exception as e:
             print(f"Error fetching user audit logs: {e}")
+            import traceback
+            traceback.print_exc()
             return []

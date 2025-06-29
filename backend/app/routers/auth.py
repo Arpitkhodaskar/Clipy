@@ -210,6 +210,28 @@ async def login_user(data: LoginRequest, request: Request):
                 # Update existing device's last_seen and online status
                 await FirebaseService.update_device_activity(existing_device['id'], user_id)
                 print(f"✅ Updated existing device activity: {existing_device['name']}")
+                
+                # Create audit log for existing device login
+                audit_data = {
+                    "action": "User Login",
+                    "user": user_email,
+                    "device": existing_device['name'],
+                    "status": "success",
+                    "ip_address": client_ip,
+                    "details": f"User logged in from existing device: {existing_device['name']}",
+                    "user_id": user_id,
+                    "device_id": existing_device['id'],
+                    "metadata": {
+                        "email": user_email,
+                        "platform": device_info['platform'],
+                        "browser": device_info['browser'],
+                        "device_type": device_info['device_type'],
+                        "existing_device": True
+                    }
+                }
+                
+                audit_id = await FirebaseService.create_audit_log(audit_data)
+                print(f"✅ Existing device login audit log created: {audit_id}")
             else:
                 # Create new device entry for this login
                 device_data = {

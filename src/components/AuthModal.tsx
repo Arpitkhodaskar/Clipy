@@ -141,7 +141,7 @@ export function AuthModal({ onLogin, onRegister, authError }: AuthModalProps) {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 className="w-full pl-10 pr-12 py-3 bg-gray-900 border border-gray-600 rounded-lg text-white focus:border-blue-500 focus:outline-none"
-                placeholder="any password"
+                placeholder="demo123"
               />
               <button
                 type="button"
@@ -152,6 +152,21 @@ export function AuthModal({ onLogin, onRegister, authError }: AuthModalProps) {
               </button>
             </div>
           </div>
+
+          {isLogin && (
+            <div className="text-center">
+              <button
+                type="button"
+                onClick={() => {
+                  setEmail('demo@clipvault.com');
+                  setPassword('demo123');
+                }}
+                className="text-sm text-blue-400 hover:text-blue-300 transition-colors"
+              >
+                Use demo credentials
+              </button>
+            </div>
+          )}
 
           <button
             type="submit"
